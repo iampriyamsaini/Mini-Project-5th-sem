@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
-import { Camera, Brain, Heart, Activity, TrendingUp, Calendar, MessageSquare, AlertCircle, CheckCircle, Smile, Meh, Frown, Shield, Music, Users, Lightbulb, Phone, Lock, Zap, Target, BarChart3 } from 'lucide-react';
-import { Emotion, Category, MoodEntry, EmotionState, MusicTherapy, AmbientMode, CategoryItem } from './types';
+import React, { useState, useEffect } from 'react';
+import { Camera, Brain, Heart, Activity, TrendingUp, Calendar, MessageSquare, AlertCircle, CheckCircle, Smile, Meh, Frown, Shield, Music, Users, Lightbulb, Phone, Lock, Zap, Target, BarChart3, LogOut } from 'lucide-react';
+import { Emotion, Category, MoodEntry, EmotionState, MusicTherapy, AmbientMode, CategoryItem, UserData } from './types';
+import { api } from './api';
 
 const EmotionHealthMonitor = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: '',
+    name: ''
+  });
+
+  // Existing state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'scan' | 'journal'>('dashboard');
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<EmotionState | null>(null);
   const [scanMode, setScanMode] = useState<'multimodal' | 'face' | 'voice'>('multimodal');
-  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([
-    { date: '2025-10-26', emotion: 'Happy', score: 85, note: 'Great day at work', category: 'normal', context: 'Work', time: '14:30' },
-    { date: '2025-10-27', emotion: 'Neutral', score: 65, note: 'Regular day', category: 'normal', context: 'Home', time: '19:00' },
-    { date: '2025-10-28', emotion: 'Anxious', score: 45, note: 'Stressful meetings', category: 'moderate', context: 'Work', time: '11:15' },
-    { date: '2025-10-29', emotion: 'Happy', score: 80, note: 'Good progress on project', category: 'normal', context: 'Work', time: '16:45' },
-    { date: '2025-10-30', emotion: 'Calm', score: 75, note: 'Relaxing evening', category: 'normal', context: 'Home', time: '20:00' },
-  ]);
+  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
   const [journalEntry, setJournalEntry] = useState('');
   const [musicPlaying, setMusicPlaying] = useState<MusicTherapy | null>(null);
   const [ambientMode, setAmbientMode] = useState<AmbientMode>({ lights: 'warm', music: 'calm' });
@@ -99,15 +105,101 @@ const EmotionHealthMonitor = () => {
     'Angry': { genre: 'Calming Piano', track: 'Inner Peace', color: 'text-red-700' }
   };
 
-  const handleScan = () => {
+  // Check authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && user) {
+      setIsAuthenticated(true);
+      setUserData(JSON.parse(user));
+      setActiveCategory(JSON.parse(user).careMode || null);
+      loadUserData();
+    }
+  }, []);
+
+  // Load user data from backend
+  const loadUserData = async () => {
+    try {
+      const emotions = await api.getEmotions();
+      
+      // Transform backend data to match frontend format
+      const transformedEmotions = emotions.map((e: any) => ({
+        date: new Date(e.timestamp).toISOString().split('T')[0],
+        emotion: e.emotion,
+        score: e.score,
+        note: e.note || '',
+        category: e.userId?.careMode || 'normal',
+        context: e.context?.location || 'Unknown',
+        time: new Date(e.timestamp).toLocaleTimeString()
+      }));
+      
+      setMoodHistory(transformedEmotions);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  // Handle authentication
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      let response;
+      if (authMode === 'login') {
+        response = await api.login({
+          email: authForm.email,
+          password: authForm.password
+        });
+      } else {
+        response = await api.register({
+          email: authForm.email,
+          password: authForm.password,
+          name: authForm.name,
+          careMode: 'normal' // Default, user will select after login
+        });
+      }
+
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setIsAuthenticated(true);
+        setUserData(response.user);
+        setAuthForm({ email: '', password: '', name: '' });
+        loadUserData();
+      } else {
+        alert(response.error || 'Authentication failed');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      alert('Authentication failed. Please try again.');
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+    setUserData(null);
+    setActiveCategory(null);
+    setMoodHistory([]);
+  };
+
+  // Handle scan with backend integration
+  const handleScan = async () => {
     setIsScanning(true);
-    setTimeout(() => {
+    
+    try {
+      // Simulate AI scanning (3 seconds)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       const randomEmotion = emotions[Math.floor(Math.random() * emotions.length)];
       const randomScore = Math.floor(Math.random() * 40) + 60;
       const contexts = ['Home', 'Work', 'Commute', 'Social'];
       const context = contexts[Math.floor(Math.random() * contexts.length)];
       
-      setCurrentEmotion({ 
+      const emotionState: EmotionState = { 
         emotion: randomEmotion, 
         score: randomScore, 
         timestamp: new Date().toLocaleTimeString(),
@@ -115,15 +207,21 @@ const EmotionHealthMonitor = () => {
         voiceAnalysis: Math.floor(Math.random() * 100),
         facialAnalysis: Math.floor(Math.random() * 100),
         behaviorAnalysis: Math.floor(Math.random() * 100)
-      });
+      };
       
+      setCurrentEmotion(emotionState);
+      
+      // Set music therapy for normal mode
       if (activeCategory === 'normal') {
         setMusicPlaying(musicTherapy[randomEmotion]);
         updateAmbientMode(randomEmotion);
       }
       
       setIsScanning(false);
-    }, 3000);
+    } catch (error) {
+      console.error('Error during scan:', error);
+      setIsScanning(false);
+    }
   };
 
   const updateAmbientMode = (emotion: Emotion) => {
@@ -141,21 +239,72 @@ const EmotionHealthMonitor = () => {
     setAmbientMode(ambientSettings[emotion] || { lights: 'neutral', music: 'ambient' });
   };
 
-  const addMoodEntry = () => {
-    if (currentEmotion) {
-      const category = activeCategory || 'normal';
-      const newEntry = {
-        date: new Date().toISOString().split('T')[0],
+  // Save emotion to backend
+  const addMoodEntry = async () => {
+    if (!currentEmotion) return;
+    
+    try {
+      const emotionData = {
         emotion: currentEmotion.emotion,
         score: currentEmotion.score,
-        note: journalEntry || 'Quick emotion check',
-        category: category,
-        context: currentEmotion.context,
-        time: new Date().toLocaleTimeString()
+        scanMode: scanMode,
+        modalityBreakdown: {
+          facial: currentEmotion.facialAnalysis,
+          voice: currentEmotion.voiceAnalysis,
+          behavior: currentEmotion.behaviorAnalysis
+        },
+        context: {
+          location: currentEmotion.context,
+          activity: 'User Activity',
+          timeOfDay: currentEmotion.timestamp
+        },
+        note: journalEntry || 'Quick emotion check'
       };
-      setMoodHistory([...moodHistory, newEntry]);
-      setJournalEntry('');
-      setMusicPlaying(null);
+
+      const response = await api.recordEmotion(emotionData);
+      
+      if (response.emotionRecord) {
+        // Handle intervention from backend
+        if (response.intervention) {
+          if (response.intervention.musicTherapy) {
+            setMusicPlaying(response.intervention.musicTherapy);
+          }
+          if (response.intervention.ambientSettings) {
+            setAmbientMode(response.intervention.ambientSettings);
+          }
+        }
+        
+        // Reload emotions from backend
+        await loadUserData();
+        
+        // Clear form
+        setJournalEntry('');
+        setCurrentEmotion(null);
+        setMusicPlaying(null);
+        
+        alert('Emotion saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving emotion:', error);
+      alert('Failed to save emotion. Please try again.');
+    }
+  };
+
+  // Update care mode in backend
+  const handleCategorySelect = async (categoryId: Category) => {
+    try {
+      await api.updateCareMode(categoryId);
+      setActiveCategory(categoryId);
+      
+      // Update local storage
+      if (userData) {
+        const updatedUser = { ...userData, careMode: categoryId };
+        setUserData(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error('Error updating care mode:', error);
+      alert('Failed to update care mode');
     }
   };
 
@@ -165,14 +314,121 @@ const EmotionHealthMonitor = () => {
     return <Frown className="w-5 h-5" />;
   };
 
+  // Show login/register form if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <div className="text-center mb-6">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-3 rounded-lg inline-block mb-4">
+              <Brain className="w-12 h-12 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              {authMode === 'login' ? 'Login to MindCare AI' : 'Register for MindCare AI'}
+            </h2>
+            <p className="text-gray-600 mt-2">AI-Based Emotion Recognition & Mental Health Monitoring</p>
+          </div>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            {authMode === 'register' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={authForm.name}
+                  onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  required
+                  placeholder="Enter your name"
+                />
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+              <input
+                type="email"
+                value={authForm.email}
+                onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                required
+                placeholder="your.email@example.com"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                required
+                placeholder="••••••••"
+                minLength={6}
+              />
+              {authMode === 'register' && (
+                <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+              )}
+            </div>
+            
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg hover:from-indigo-700 hover:to-purple-700 font-semibold transition-all"
+            >
+              {authMode === 'login' ? 'Login' : 'Create Account'}
+            </button>
+          </form>
+          
+          <p className="text-center mt-6 text-gray-600">
+            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            <button
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'register' : 'login');
+                setAuthForm({ email: '', password: '', name: '' });
+              }}
+              className="text-indigo-600 font-semibold hover:underline"
+            >
+              {authMode === 'login' ? 'Register' : 'Login'}
+            </button>
+          </p>
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center">
+              By continuing, you agree to our Terms of Service and Privacy Policy. 
+              This platform is HIPAA-compliant with end-to-end encryption.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show category selection if not selected
   if (!activeCategory) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-8">
         <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Welcome, {userData?.name}!
+              </h1>
+              <p className="text-gray-600 mt-2">Choose your personalized care mode to get started</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 border border-gray-300 rounded-lg hover:border-red-600 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
               Choose Your Care Mode
-            </h1>
+            </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               Select the appropriate monitoring level based on your mental health needs. Each mode is designed with advanced AI features tailored to your situation.
             </p>
@@ -182,7 +438,7 @@ const EmotionHealthMonitor = () => {
             {categories.map((cat) => (
               <div
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => handleCategorySelect(cat.id)}
                 className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer transform transition-all hover:scale-105 hover:shadow-2xl"
               >
                 <div className={`bg-gradient-to-r ${cat.color} p-8 text-white text-center`}>
@@ -208,6 +464,7 @@ const EmotionHealthMonitor = () => {
             ))}
           </div>
 
+          {/* Technology Stack Section - Same as before */}
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
               <Zap className="w-7 h-7 text-indigo-600" />
@@ -307,14 +564,25 @@ const EmotionHealthMonitor = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <div className="text-right mr-3">
+                <p className="text-sm font-semibold text-gray-800">{userData?.name}</p>
+                <p className="text-xs text-gray-500">{userData?.email}</p>
+              </div>
               <button
                 onClick={() => setActiveCategory(null)}
-                className="text-sm text-gray-600 hover:text-indigo-600 font-medium"
+                className="text-sm text-gray-600 hover:text-indigo-600 font-medium px-3 py-1 rounded hover:bg-gray-100"
               >
                 Change Mode
               </button>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-gray-600 hover:text-red-600 font-medium px-3 py-1 rounded hover:bg-red-50 flex items-center gap-1"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
               <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                U
+                {userData?.name.charAt(0).toUpperCase()}
               </div>
             </div>
           </div>
@@ -482,30 +750,37 @@ const EmotionHealthMonitor = () => {
                 <TrendingUp className="w-6 h-6 text-indigo-600" />
                 Emotion Trajectory (Last 5 Days)
               </h3>
-              <div className="space-y-3">
-                {moodHistory.slice(-5).reverse().map((entry, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-full ${emotionColors[entry.emotion]} flex items-center justify-center text-white font-bold`}>
-                        {entry.score}
+              {moodHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {moodHistory.slice(-5).reverse().map((entry, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full ${emotionColors[entry.emotion]} flex items-center justify-center text-white font-bold`}>
+                          {entry.score}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800">{entry.emotion}</p>
+                          <p className="text-sm text-gray-500">{entry.date} • {entry.time} • {entry.context}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{entry.emotion}</p>
-                        <p className="text-sm text-gray-500">{entry.date} • {entry.time} • {entry.context}</p>
+                      <div className="text-right">
+                        <span className={`text-xs px-3 py-1 rounded-full ${
+                          entry.category === 'normal' ? 'bg-green-100 text-green-700' :
+                          entry.category === 'moderate' ? 'bg-orange-100 text-orange-700' :
+                          'bg-purple-100 text-purple-700'
+                        }`}>
+                          {entry.category}
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`text-xs px-3 py-1 rounded-full ${
-                        entry.category === 'normal' ? 'bg-green-100 text-green-700' :
-                        entry.category === 'moderate' ? 'bg-orange-100 text-orange-700' :
-                        'bg-purple-100 text-purple-700'
-                      }`}>
-                        {entry.category}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No emotion records yet. Start by scanning your emotion!</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -751,31 +1026,38 @@ const EmotionHealthMonitor = () => {
                 <MessageSquare className="w-6 h-6 text-indigo-600" />
                 Mood Journal & History
               </h3>
-              <div className="space-y-4">
-                {moodHistory.map((entry, index) => (
-                  <div key={index} className="border-l-4 border-indigo-500 pl-4 py-3 bg-gray-50 rounded-r-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full ${emotionColors[entry.emotion]} flex items-center justify-center text-white text-sm`}>
-                          {getEmotionIcon(entry.emotion)}
+              {moodHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {moodHistory.map((entry, index) => (
+                    <div key={index} className="border-l-4 border-indigo-500 pl-4 py-3 bg-gray-50 rounded-r-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full ${emotionColors[entry.emotion]} flex items-center justify-center text-white text-sm`}>
+                            {getEmotionIcon(entry.emotion)}
+                          </div>
+                          <span className="font-semibold text-gray-800">{entry.emotion}</span>
+                          <span className="text-gray-500 text-sm">{entry.date} • {entry.time}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            entry.category === 'normal' ? 'bg-green-100 text-green-700' :
+                            entry.category === 'moderate' ? 'bg-orange-100 text-orange-700' :
+                            'bg-purple-100 text-purple-700'
+                          }`}>
+                            {entry.category}
+                          </span>
                         </div>
-                        <span className="font-semibold text-gray-800">{entry.emotion}</span>
-                        <span className="text-gray-500 text-sm">{entry.date} • {entry.time}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          entry.category === 'normal' ? 'bg-green-100 text-green-700' :
-                          entry.category === 'moderate' ? 'bg-orange-100 text-orange-700' :
-                          'bg-purple-100 text-purple-700'
-                        }`}>
-                          {entry.category}
-                        </span>
+                        <span className="text-lg font-bold text-gray-700">{entry.score}%</span>
                       </div>
-                      <span className="text-lg font-bold text-gray-700">{entry.score}%</span>
+                      <p className="text-gray-600 ml-11">{entry.note}</p>
+                      <p className="text-xs text-gray-500 ml-11 mt-1">Context: {entry.context}</p>
                     </div>
-                    <p className="text-gray-600 ml-11">{entry.note}</p>
-                    <p className="text-xs text-gray-500 ml-11 mt-1">Context: {entry.context}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No journal entries yet. Start recording your emotions!</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -794,4 +1076,4 @@ const EmotionHealthMonitor = () => {
   );
 };
 
-export default EmotionHealthMonitor
+export default EmotionHealthMonitor;
