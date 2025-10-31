@@ -320,9 +320,7 @@ const EmotionHealthMonitor = () => {
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-8">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
           <div className="text-center mb-6">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-3 rounded-lg inline-block mb-4">
-              <Brain className="w-12 h-12 text-white" />
-            </div>
+           
             <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               {authMode === 'login' ? 'Login to MindCare AI' : 'Register for MindCare AI'}
             </h2>
@@ -473,7 +471,7 @@ const EmotionHealthMonitor = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <Brain className="w-6 h-6 text-blue-600" />
+               
                   <h4 className="font-semibold text-gray-800">Multimodal Emotion Fusion</h4>
                 </div>
                 <p className="text-sm text-gray-600">Combines face, voice, and behavior analysis achieving 87-90% accuracy using CNN-LSTM networks and attention mechanisms for comprehensive emotion detection.</p>
@@ -553,14 +551,11 @@ const EmotionHealthMonitor = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-2 rounded-lg">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   MindCare AI
                 </h1>
-                <p className="text-xs text-gray-500">Emotion Recognition & Mental Health</p>
+                
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -667,7 +662,7 @@ const EmotionHealthMonitor = () => {
                     <p className="text-gray-500 text-sm">AI Accuracy</p>
                     <p className="text-3xl font-bold text-gray-800">89%</p>
                   </div>
-                  <Brain className="w-12 h-12 text-purple-500" />
+                  
                 </div>
               </div>
               
@@ -799,7 +794,7 @@ const EmotionHealthMonitor = () => {
                         : 'border-gray-300 hover:border-indigo-300'
                     }`}
                   >
-                    <Brain className="w-6 h-6 mx-auto mb-2" />
+                    
                     <p className="text-sm font-semibold">Multimodal</p>
                     <p className="text-xs text-gray-500">Face+Voice+Behavior</p>
                   </button>
@@ -836,7 +831,7 @@ const EmotionHealthMonitor = () => {
                     <>
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse opacity-30"></div>
                       <div className="z-10 text-center">
-                        <Brain className="w-16 h-16 text-indigo-600 mx-auto mb-4 animate-bounce" />
+                       
                         <p className="text-xl font-semibold text-gray-700">Analyzing {scanMode} data...</p>
                         <p className="text-sm text-gray-500 mt-2">Processing with edge AI (local device)</p>
                       </div>
@@ -989,7 +984,7 @@ const EmotionHealthMonitor = () => {
                 disabled={isScanning}
                 className="w-full bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold text-lg flex items-center justify-center gap-3"
               >
-                <Brain className="w-6 h-6" />
+               
                 {isScanning ? 'Scanning...' : 'Start Emotion Scan'}
               </button>
               
