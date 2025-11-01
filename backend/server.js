@@ -60,21 +60,64 @@ app.get('/health', (req, res) => {
 
 // Database connection
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mindcare-ai';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/EmotionBase';
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => {
-  console.log('✅ Connected to MongoDB');
-  app.listen(PORT, () => {
-    console.log(`🚀 MindCare AI Backend running on port ${PORT}`);
-    console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
-  });
-})
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err);
-});
+// More detailed connection handling
+const connectDB = async () => {
+  try {
+    // Add connection options
+    const options = {
+      serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000
+    };
+
+    // Print connection attempt
+    console.log('🔄 Attempting to connect to MongoDB...');
+    console.log('🌐 Using database:', options.dbName);
+
+    const conn = await mongoose.connect(MONGODB_URI, options);
+    
+    console.log('\n✅ MongoDB Connected Successfully');
+    console.log(`📦 Database: ${conn.connection.name}`);
+    console.log(`🖥️  Host: ${conn.connection.host}`);
+    console.log('🔐 SSL Enabled: Yes\n');
+    
+    // Start server only after successful DB connection
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
+    });
+
+  } catch (error) {
+    console.error('\n❌ MongoDB Connection Error:');
+    
+    // Handle specific error types
+    if (error.name === 'MongooseServerSelectionError') {
+      console.error('🔍 Server Selection Error - Possible causes:');
+      console.error('  1. MongoDB Atlas cluster is paused');
+      console.error('  2. IP address not whitelisted');
+      console.error('  3. Network/firewall blocking connection');
+      console.error('  4. Invalid connection string');
+    }
+    
+    console.error('\n📝 Error Details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code || 'N/A'
+    });
+
+    if (error.cause) {
+      console.error('\n🔍 Additional Error Information:');
+      console.error(error.cause);
+    }
+
+    // Exit with failure
+    process.exit(1);
+  }
+};
+
+// Initialize connection
+connectDB();
 
 module.exports = app;
