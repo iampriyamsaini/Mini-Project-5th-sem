@@ -4,6 +4,7 @@ const EmotionRecord = require('../models/EmotionRecord');
 const Alert = require('../models/Alert');
 const User = require('../models/User');
 const authenticateToken = require('../middleware/auth');
+const notificationService = require('../services/notificationService');
 
 // Helper functions
 function getMusicTherapy(emotion) {
@@ -171,5 +172,33 @@ router.get('/analytics', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+
+// In the POST /api/emotions route, after creating alert:
+if (user.careMode === 'clinical' && score < 50) {
+  interventionTriggered = true;
+  interventionType = 'crisis_alert';
+  
+  // Create alert
+  const alert = await Alert.create({
+    userId: req.user.userId,
+    emotionRecordId: emotionRecord._id,
+    alertType: 'low_wellness',
+    severity: score < 40 ? 'critical' : 'high',
+    message: `Low wellness score detected: ${score}%. Emotion: ${emotion}`
+  });
+
+  // Send notifications to caregivers
+  const caregivers = await User.find({ _id: { $in: user.caregivers } });
+  
+  if (caregivers.length > 0) {
+    await notificationService.sendLowWellnessAlert(
+      user,
+      emotionRecord,
+      caregivers
+    );
+  }
+}
 
 module.exports = router;
