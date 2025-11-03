@@ -5,7 +5,10 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
+const http = require('http');                    
+const socketIO = require('socket.io'); 
 require('dotenv').config();
+
 
 const app = express();
 
@@ -121,3 +124,4 @@ const connectDB = async () => {
 connectDB();
 
 module.exports = app;
+
