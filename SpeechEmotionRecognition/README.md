@@ -52,7 +52,6 @@ SpeechEmotionRecognition/
 
 ```bash
 git clone https://github.com/iampriyamsaini/Mini-Project-5th-sem.git
-cd Mini-Project-5th-sem/SpeechEmotionRecognition
 cd SpeechEmotionRecognition
 ```
 
