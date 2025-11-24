@@ -145,3 +145,4 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
 
 export default CameraCapture;
+
