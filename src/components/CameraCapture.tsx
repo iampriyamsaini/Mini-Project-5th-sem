@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Camera, StopCircle } from 'lucide-react';
 import { aiService } from '../services/aiService';
 
-interface CameraCaptureProps {
+interface CameraCaptureProps { 
   onEmotionDetected: (result: any) => void;
   isScanning: boolean;
   setIsScanning: (scanning: boolean) => void;
@@ -142,5 +142,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
     </div>
   );
 };
+
 
 export default CameraCapture;
