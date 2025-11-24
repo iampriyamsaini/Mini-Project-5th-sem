@@ -23,7 +23,6 @@ export const api = {
     });
     return res.json();
   },
-
   // Emotions
   recordEmotion: async (data) => {
     const res = await fetch(`${API_URL}/emotions`, {
@@ -45,7 +44,6 @@ export const api = {
     });
     return res.json();
   },
-
   getAnalytics: async (period = '7') => {
     const res = await fetch(`${API_URL}/emotions/analytics?period=${period}`, {
       headers: {
